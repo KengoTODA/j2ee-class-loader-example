@@ -6,14 +6,18 @@ import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.junit.Assert.assertThat;
 
 import java.io.File;
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
-import java.net.MalformedURLException;
 import java.net.URL;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.google.common.io.Closer;
+
 public class SingletonTest {
+    private Closer closer;
     private ClassLoaderWithoutParent firstClassLoader, secondClassLoader;
     /**
      * <p>A child class-loader of &quot;firstClassLoader&quot;, which has &quot;parent first&quot; class loading policy.</p>
@@ -36,14 +40,25 @@ public class SingletonTest {
     private ParentLastClassLoader anotherChildOfSecondClassLoader;
 
     @Before
-    public void buildClassLoader() throws MalformedURLException {
+    public void buildClassLoader() throws IOException {
         URL classPath = new File("target", "classes").toURI().toURL();
-        firstClassLoader = new ClassLoaderWithoutParent(classPath);
-        secondClassLoader = new ClassLoaderWithoutParent(classPath);
-        childOfFirstClassLoader = new ParentFirstClassLoader(firstClassLoader, classPath);
-        anotherChildOfFirstClassLoader = new ParentFirstClassLoader(firstClassLoader, classPath);
-        childOfSecondClassLoader = new ParentLastClassLoader(secondClassLoader, classPath);
-        anotherChildOfSecondClassLoader = new ParentLastClassLoader(secondClassLoader, classPath);
+        closer = Closer.create();
+        try {
+            firstClassLoader = closer.register(new ClassLoaderWithoutParent(classPath));
+            secondClassLoader = closer.register(new ClassLoaderWithoutParent(classPath));
+            childOfFirstClassLoader = closer.register(new ParentFirstClassLoader(firstClassLoader, classPath));
+            anotherChildOfFirstClassLoader = closer.register(new ParentFirstClassLoader(firstClassLoader, classPath));
+            childOfSecondClassLoader = closer.register(new ParentLastClassLoader(secondClassLoader, classPath));
+            anotherChildOfSecondClassLoader = closer.register(new ParentLastClassLoader(secondClassLoader, classPath));
+        } catch (RuntimeException e) {
+            closer.close();
+            closer.rethrow(e);
+        }
+    }
+
+    @After
+    public void closeAllClassLoader() throws IOException {
+        closer.close();
     }
 
     /**
