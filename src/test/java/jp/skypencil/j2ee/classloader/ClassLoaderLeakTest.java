@@ -40,8 +40,8 @@ public class ClassLoaderLeakTest {
         assertThat(listener.unloaded, is(false));
 
         runFinalization(listener);
-        System.out.printf("Singleton instance is %s%n", singletonInstance.getClass().getClassLoader()); // we should use singletonInstance like this, or optimization removes singletonInstance local variable
         assertThat("class loader should not be finalized, because we still use Singleton instance", listener.unloaded, is(false));
+        System.out.printf("Singleton instance is %s%n", singletonInstance.getClass().getClassLoader()); // we should use singletonInstance like this, or optimization removes singletonInstance local variable
     }
 
     /**
